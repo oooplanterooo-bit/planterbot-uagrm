@@ -28,8 +28,8 @@ def consultar_gemini_manual(pregunta):
     if not api_key:
         return "Falta la API Key."
     
-    # URL directa de Google (Usamos 1.5 Flash que es gratis y rápido)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+   # URL directa de Google (Usamos gemini-pro que es el estándar universal)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
     
     headers = {'Content-Type': 'application/json'}
     
@@ -74,3 +74,4 @@ if pregunta := st.chat_input("Duda sobre trámites..."):
         resp = consultar_gemini_manual(pregunta)
         st.markdown(resp)
         st.session_state.mensajes.append({"role": "assistant", "content": resp})
+
