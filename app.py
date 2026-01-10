@@ -42,7 +42,7 @@ def obtener_respuesta(pregunta):
     try:
         genai.configure(api_key=api_key)
         # Usamos el modelo Flash que es rápido y gratuito
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Estas son las instrucciones de personalidad del Bot
         prompt_sistema = f"""
@@ -90,3 +90,4 @@ if pregunta_usuario := st.chat_input("Escribe tu duda aquí... (Ej: ¿Requisitos
             
     # Guardar respuesta en historial
     st.session_state.mensajes.append({"role": "assistant", "content": respuesta})
+
