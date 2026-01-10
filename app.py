@@ -42,7 +42,7 @@ def obtener_respuesta(pregunta):
     try:
         genai.configure(api_key=api_key)
         # Usamos el modelo Flash que es rápido y gratuito
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         
         # Estas son las instrucciones de personalidad del Bot
         prompt_sistema = f"""
