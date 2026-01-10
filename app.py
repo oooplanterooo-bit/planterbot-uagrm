@@ -41,7 +41,7 @@ def obtener_respuesta(pregunta):
         genai.configure(api_key=api_key)
         
         # AQUÍ ESTÁ EL CAMBIO: Usamos el modelo que apareció en tu lista diagnóstica
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt_sistema = f"""
         Actúa como 'PlanterBot', el asistente oficial del Centro Interno de la Facultad de Ciencias del Hábitat (UAGRM).
@@ -83,3 +83,4 @@ if pregunta_usuario := st.chat_input("Escribe tu duda aquí..."):
             st.markdown(respuesta)
             
     st.session_state.mensajes.append({"role": "assistant", "content": respuesta})
+
