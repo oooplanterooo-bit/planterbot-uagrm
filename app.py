@@ -1,20 +1,44 @@
 import streamlit as st
 import requests
-import json
 import os
+import time
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="PlanterBot UAGRM", page_icon="🌵")
-st.title("🌵 PlanterBot - Centro Interno")
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(
+    page_title="PlanterBot - FCHDA",
+    page_icon="🌵",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
 
-# --- CARGAR INFORMACIÓN ---
+# Estilos CSS (Personalizados)
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    h1 {color: #2E7D32; text-align: center;}
+    .stButton button {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid #4CAF50;
+        color: #4CAF50;
+        background-color: transparent;
+    }
+    .stButton button:hover {
+        background-color: #4CAF50;
+        color: white;
+        border: 1px solid #4CAF50;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- CARGAR BASE DE DATOS ---
 def cargar_informacion():
-    # Intentamos leer el archivo (probamos minúscula y Mayúscula por si acaso)
     if os.path.exists('informacion.txt'):
         with open('informacion.txt', 'r', encoding='utf-8') as f: return f.read()
     elif os.path.exists('Informacion.txt'):
         with open('Informacion.txt', 'r', encoding='utf-8') as f: return f.read()
-    return "No se encontró la base de datos."
+    return "No se encontró la información."
 
 conocimiento = cargar_informacion()
 
@@ -22,50 +46,44 @@ conocimiento = cargar_informacion()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    api_key = st.sidebar.text_input("Tu API Key", type="password")
+    api_key = st.sidebar.text_input("Ingresa tu API Key:", type="password")
 
-# --- FUNCIÓN INTELIGENTE (Auto-Select) ---
+# --- LÓGICA INTELIGENTE (Bypass) ---
 def obtener_modelo_valido(api_key):
-    """Pregunta a Google qué modelos tienes y elige el mejor disponible."""
-    url_lista = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
-        resp = requests.get(url_lista)
+        resp = requests.get(url)
         if resp.status_code == 200:
-            modelos = resp.json().get('models', [])
-            # Buscamos modelos que sirvan para generar texto (generateContent)
-            # Priorizamos versiones "pro" o "flash" estables
-            candidatos = []
-            for m in modelos:
-                if 'generateContent' in m.get('supportedGenerationMethods', []):
-                    candidatos.append(m['name']) # Guarda ej: models/gemini-pro
-            
-            # Si encontramos alguno, devolvemos el primero
-            if candidatos:
-                # Preferencia: si está gemini-1.5-flash lo usamos, si no, el que sea
-                for c in candidatos:
-                    if 'gemini-1.5-flash' in c: return c
-                return candidatos[0] # El primero que sirva
+            data = resp.json()
+            candidatos = [m['name'] for m in data.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
+            for c in candidatos:
+                if 'gemini-1.5-flash' in c: return c
+            if candidatos: return candidatos[0]
     except:
         pass
-    return "models/gemini-pro" # Fallback por defecto
+    return "models/gemini-pro"
 
-# --- FUNCIÓN DE RESPUESTA ---
-def consultar_gemini_smart(pregunta):
-    if not api_key: return "Falta la API Key."
+def consultar_ia(pregunta):
+    if not api_key: return "⚠️ Necesito una API Key para funcionar."
     
-    # 1. Detectamos el modelo automáticamente
-    nombre_modelo = obtener_modelo_valido(api_key)
-    
-    # 2. Construimos la URL con el modelo exacto que Google nos dio
-    url = f"https://generativelanguage.googleapis.com/v1beta/{nombre_modelo}:generateContent?key={api_key}"
+    modelo = obtener_modelo_valido(api_key)
+    url = f"https://generativelanguage.googleapis.com/v1beta/{modelo}:generateContent?key={api_key}"
     headers = {'Content-Type': 'application/json'}
     
     prompt = f"""
-    Eres PlanterBot, asistente de la Facultad. 
-    Responde usando SOLO esta información:
+    Eres PlanterBot, el asistente virtual del Centro Interno de la Facultad (FCHDA - UAGRM).
+    Tu personalidad es amable, motivadora y eficiente.
+    
+    Reglas:
+    1. Usa SOLO la siguiente información oficial.
+    2. Si no sabes la respuesta, di: "No tengo ese dato oficial. Contacta al Centro Interno."
+    3. Sé breve y usa listas.
+    4. Usa emojis verdes (🌵, 🍃, ✅).
+
+    INFORMACIÓN OFICIAL:
     {conocimiento}
     
-    Pregunta: {pregunta}
+    PREGUNTA: {pregunta}
     """
     
     data = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -75,22 +93,79 @@ def consultar_gemini_smart(pregunta):
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
-            return f"⚠️ Error ({response.status_code}) usando el modelo '{nombre_modelo}': {response.text}"
+            return "Tuve un pequeño error de conexión. Intenta de nuevo."
     except Exception as e:
-        return f"Error de conexión: {str(e)}"
+        return f"Error: {str(e)}"
 
-# --- CHAT ---
-if "mensajes" not in st.session_state: st.session_state.mensajes = []
+# --- INTERFAZ GRÁFICA ---
+
+# 1. HEADER
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    # AQUI CAMBIAMOS A .PNG
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.header("🌵 PlanterBot")
+
+st.markdown("<h3 style='text-align: center; color: gray;'>Tu guía en la Facultad de Ciencias del Hábitat</h3>", unsafe_allow_html=True)
+st.divider()
+
+# 2. BARRA LATERAL
+with st.sidebar:
+    # AQUI CAMBIAMOS A .PNG
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=100)
+    else:
+        st.write("🌵")
+        
+    st.write("### 🛠️ Herramientas")
+    if st.button("🗑️ Borrar Conversación"):
+        st.session_state.mensajes = []
+        st.rerun()
+    st.write("---")
+    st.write("### 📞 Contacto Oficial")
+    st.info("**Celular/WhatsApp:**\n73676005 (Andrés Valencia)\n\n📍 **Ubicación:**\nCentro Interno - FCHDA")
+
+# 3. CHAT
+if "mensajes" not in st.session_state:
+    st.session_state.mensajes = []
+
+# Avatar del bot (.PNG)
+avatar_bot = "logo.png" if os.path.exists("logo.png") else "🌵"
 
 for m in st.session_state.mensajes:
-    with st.chat_message(m["role"]): st.markdown(m["content"])
+    with st.chat_message(m["role"], avatar=avatar_bot if m["role"] == "assistant" else None):
+        st.markdown(m["content"])
 
-if preg := st.chat_input("Escribe tu duda..."):
-    st.session_state.mensajes.append({"role": "user", "content": preg})
-    with st.chat_message("user"): st.markdown(preg)
+# 4. SUGERENCIAS RÁPIDAS (Si está vacío)
+if len(st.session_state.mensajes) == 0:
+    st.write("Selecciona una opción rápida:")
+    cols = st.columns(2)
+    with cols[0]:
+        if st.button("🎓 Requisitos Titulación"):
+            st.session_state.mensajes.append({"role": "user", "content": "Requisitos para titulación"})
+            st.rerun()
+        if st.button("📅 Calendario 2026"):
+            st.session_state.mensajes.append({"role": "user", "content": "Calendario académico 2026"})
+            st.rerun()
+    with cols[1]:
+        if st.button("💰 Becas"):
+            st.session_state.mensajes.append({"role": "user", "content": "Qué becas hay disponibles?"})
+            st.rerun()
+        if st.button("📋 Trámites"):
+            st.session_state.mensajes.append({"role": "user", "content": "Lista de trámites disponibles"})
+            st.rerun()
+
+# 5. INPUT
+if prompt := st.chat_input("Escribe tu duda aquí..."):
+    st.session_state.mensajes.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
     
-    with st.chat_message("assistant"):
-        with st.spinner("Buscando..."):
-            resp = consultar_gemini_smart(preg)
+    with st.chat_message("assistant", avatar=avatar_bot):
+        with st.spinner("Consultando... 🍃"):
+            resp = consultar_ia(prompt)
             st.markdown(resp)
-            st.session_state.mensajes.append({"role": "assistant", "content": resp})
+    
+    st.session_state.mensajes.append({"role": "assistant", "content": resp})
